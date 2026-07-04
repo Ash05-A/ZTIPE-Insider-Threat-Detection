@@ -1,0 +1,125 @@
+🚀 How to demo from now on
+🔄 Quick restart (if containers are just stopped)
+Start the stack (if it’s down):
+
+cmd
+docker-compose up -d
+Open the Dashboard → http://localhost:8501
+
+Start the Watchdog (if you want to show live file monitoring):
+
+cmd
+python scripts\watch_delete.py
+Enter the folder to monitor (e.g., C:\Users\yashd\Desktop\ztipe_watch).
+
+Delete a test file – the whole pipeline lights up instantly.
+
+Everything works immediately – no topic creation, no NiFi re‑configuration needed.
+
+🧹 Fresh demo (reset all data, but keep the pipeline)
+If you want to wipe the slate clean (remove old events, scores, graph) for a fresh demonstration:
+
+cmd
+docker-compose down -v          # ⚠️ removes volumes (data wiped!)
+docker-compose up -d            # recreates everything fresh
+Then you’ll need to:
+
+Re‑create the Kafka topic:
+
+cmd
+docker exec -it ztipe-final-kafka-1 kafka-topics --create --topic file-events-json --bootstrap-server localhost:9092 --partitions 1 --replication-factor 1
+The NiFi flow will survive because of the nifi_conf volume – you just need to start the processors if they aren’t running (they should auto‑start if you left them running before shutdown, but check).
+
+📋 Checklist for a polished demo
+Before the demo:
+
+Run the stack (docker-compose up -d).
+
+Verify dashboard is accessible.
+
+Have a monitored folder ready with a few dummy files to delete.
+
+During the demo:
+
+Show the watchdog running in a terminal.
+
+Delete a file → point out the event appears in the dashboard in real time.
+
+Show the threat scores and the interaction graph (if enabled).
+
+Mention the containerised architecture.
+
+After the demo:
+
+Press Ctrl+C in the watchdog terminal.
+
+Optionally stop the stack: docker-compose stop (keeps data) or docker-compose down (removes containers, but volumes persist unless you add -v).
+
+⚠️ Important: do NOT use docker-compose down -v unless you want to erase everything
+Regular docker-compose down removes containers but leaves volumes (MongoDB, NiFi flow) intact.
+Use docker-compose stop / start for even quicker restarts.
+
+Here’s exactly what you need to run next time you want to demo the ZTIPE pipeline—no rebuilds, no reconfiguration, no topic creation.
+
+---
+
+## 🚀 Quick Demo Start (from `ZTIPE-FINAL` folder)
+
+### 1. Start all containers
+```cmd
+docker-compose up -d
+```
+Wait about 20–30 seconds for NiFi and Kafka to fully initialize.
+
+### 2. Start the watchdog
+Open a **second terminal**, navigate to your project folder, and run:
+```cmd
+python scripts\watch_delete.py
+```
+When prompted, enter the folder you want to monitor (e.g., `C:\Users\yashd\Desktop\ztipe_watch`).
+
+### 3. Open the dashboard
+In your browser, go to:
+```
+http://localhost:8501
+```
+That’s it – the pipeline is now live.
+
+---
+
+## 🧪 During the demo
+- Delete a file in the monitored folder.
+- Watch the dashboard: the event appears immediately.
+- After a few minutes (or manually trigger graph engine), threat scores and suspicious users appear.
+
+---
+
+## 🛠️ Optional verification (if needed)
+- **Check NiFi flow**: `http://localhost:8080/nifi` (or `https://localhost:8443/nifi`)  
+  Both processors (TailFile → PublishKafka) should be running.
+- **Check Kafka messages**:
+  ```cmd
+  docker exec -it ztipe-final-kafka-1 kafka-console-consumer --topic file-events-json --bootstrap-server localhost:9092 --from-beginning --max-messages 1
+  ```
+- **Check consumer logs**:
+  ```cmd
+  docker logs ztipe-consumer
+  ```
+- **Check graph engine logs** (after it runs):
+  ```cmd
+  docker logs zt-graph-engine
+  ```
+
+---
+
+## 🔌 After the demo
+- Press `Ctrl+C` in the watchdog terminal to stop monitoring.
+- Stop containers (preserve data):
+  ```cmd
+  docker-compose stop
+  ```
+- Or just leave them running if you’ll use them again soon.
+
+---
+
+No Kafka topic creation, no NiFi reconfiguration, no Docker image rebuilding – everything is persistent. Your demo will run smoothly every time.

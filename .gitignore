@@ -1,0 +1,7 @@
+nifi_conf/ 
+mongo_data/ 
+graph_plots/ 
+ztipe-logs/ 
+*.log 
+__pycache__/ 
+.env 

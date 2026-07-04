@@ -1,0 +1,109 @@
+services:
+  # ---------- ZooKeeper ----------
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  # ---------- Kafka ----------
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # ---------- NiFi ----------
+  nifi:
+    image: apache/nifi:2.3.0
+    environment:
+      NIFI_WEB_HTTP_PORT: "8080"
+      NIFI_WEB_HTTPS_PORT: ""      # if using HTTP; otherwise keep 8443
+    ports:
+      - "8080:8080"                # or 8443:8443 if HTTPS
+    depends_on:
+      - kafka
+    volumes:
+      - ./ztipe-logs:/data/logs:ro
+      - nifi_conf:/opt/nifi/nifi-current/conf   # <-- ADD THIS
+  # ---------- MongoDB ----------
+  mongo:
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  # ---------- Kafka Consumer ----------
+  consumer:
+    build: ./consumer
+    container_name: ztipe-consumer
+    restart: unless-stopped
+    depends_on:
+      - kafka
+      - mongo
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - MONGO_URI=mongodb://mongo:27017
+
+  # ---------- Graph Engine ----------
+  graph-engine:
+    build: ./graph-engine
+    container_name: zt-graph-engine
+    restart: unless-stopped
+    depends_on:
+      - mongo
+      - consumer
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - PYTHONUNBUFFERED=1   
+      - SAVE_GRAPH_PLOT=true                  # enable
+      - PLOT_OUTPUT_PATH=/plots/graph.png     # write inside the volume
+    volumes:
+      - graph_plots:/plots                    # mount the shared volume 
+
+  # ---------- Dashboard (Streamlit) ----------
+  dashboard:
+    build: ./dashboard
+    container_name: zt-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+    volumes:
+      - graph_plots:/plots:ro     # <-- read-only access to the plot
+
+    depends_on:
+      - mongo
+
+  # ---------- Email Alerter ----------
+  alerter:
+    build: ./alerter
+    container_name: zt-alerter
+    restart: unless-stopped
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - SMTP_SERVER=smtp.gmail.com
+      - SMTP_PORT=587
+      - SENDER_EMAIL=your.email@gmail.com
+      - SENDER_PASSWORD=your_app_password
+      - RECIPIENT_EMAIL=admin@example.com
+    depends_on:
+      - mongo
+
+volumes:
+  mongo_data:
+  graph_plots: 
+  nifi_conf:

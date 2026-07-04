@@ -1,0 +1,10 @@
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /logs/events.log
+
+output.kafka:
+  enabled: true
+  hosts: ["kafka:9092"]
+  topic: "logs-topic"

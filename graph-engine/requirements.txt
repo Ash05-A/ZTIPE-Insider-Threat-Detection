@@ -1,0 +1,4 @@
+pymongo
+networkx
+numpy
+matplotlib
