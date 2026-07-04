@@ -1,1 +1,0 @@
-    if latest_doc and (not last or latest_doc["calculation_time"] 
