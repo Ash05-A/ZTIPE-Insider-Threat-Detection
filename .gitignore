@@ -5,3 +5,4 @@ ztipe-logs/
 *.log 
 __pycache__/ 
 .env 
+.vscode/
